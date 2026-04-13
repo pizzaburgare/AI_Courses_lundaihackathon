@@ -47,7 +47,7 @@ dev = [
     "pytest>=8.0.0",
     "pyright>=1.1.0",
     "ruff>=0.15.4",
-    "types-pyyaml>=6.0.12.20250915",
+    "types-pyyaml>=6.0.12.20260408",
     "pylint>=4.0.5",
     "packaging>=26.0",
 
