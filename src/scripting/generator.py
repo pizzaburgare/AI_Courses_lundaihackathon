@@ -162,7 +162,24 @@ Generate a complete Manim script that:
     # Iteration helpers
     # ------------------------------------------------------------------
 
-    def review_video(
+    def _invoke_frame_review(
+        self,
+        structured_llm: Any,
+        sys_msg: SystemMessage,
+        user_content: list[str | dict[str, Any]],
+    ) -> tuple[VideoReview, LLMUsage] | None:
+        """Call the review LLM for one frame, returning None on any failure."""
+        try:
+            result = structured_llm.invoke([sys_msg, HumanMessage(content=user_content)])
+        except Exception as exc:  # noqa: BLE001
+            print(f"    review call failed: {exc}")
+            return None
+        else:
+            review: VideoReview = result["parsed"]  # type: ignore[index]
+            usage = extract_llm_usage(result["raw"])  # type: ignore[index]
+            return review, usage
+
+    def review_video(  # noqa: PLR0912
         self,
         script: str,
         video_path: Path,
@@ -210,9 +227,11 @@ Generate a complete Manim script that:
                 {"type": "text", "text": label},
                 img_part,
             ]
-            result = structured_llm.invoke([sys_msg, HumanMessage(content=user_content)])
-            review: VideoReview = result["parsed"]  # type: ignore[index]
-            usage = extract_llm_usage(result["raw"])  # type: ignore[index]
+            frame_result = self._invoke_frame_review(structured_llm, sys_msg, user_content)
+            if frame_result is None:
+                print(f"  [{i}/{len(frames)}] {label}: SKIP (review call failed)")
+                continue
+            review, usage = frame_result
             accumulate_llm_usage(total_usage, usage)
 
             if review.has_issues:
@@ -286,7 +305,11 @@ Generate a complete Manim script that:
             HumanMessage(content=user_content),
         ]
 
-        fix: CodeFix = structured_fix_llm.invoke(messages)  # type: ignore[assignment]
+        try:
+            fix: CodeFix = structured_fix_llm.invoke(messages)  # type: ignore[assignment]
+        except Exception as exc:  # noqa: BLE001
+            print(f"  Fix agent structured output failed ({exc}); returning original script.")
+            return script
 
         if not fix.edits:
             print("  Fix agent returned no edits - returning original script.")

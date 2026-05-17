@@ -210,7 +210,11 @@ def render_and_merge(
         status_label="Compiling video",
     )
     if result.returncode != 0:
-        raise RuntimeError("Manim render failed - check output above.")
+        combined = (result.stderr or "").strip() or (result.stdout or "").strip()
+        lines = combined.splitlines()
+        _tail_lines = 60
+        error_tail = "\n".join(lines[-_tail_lines:]) if len(lines) > _tail_lines else combined
+        raise RuntimeError(f"Manim render failed:\n{error_tail}")
 
     video_path = _find_rendered_video(cache_manim)
     print(f"Video rendered: {video_path}")

@@ -210,11 +210,15 @@ class CourseWorkflow:
         error_text = str(exc)
         print(f"  Render failed {iter_label}: {error_text[:200]}")
         current_script = script_path.read_text()
-        fixed, fix_usage = self.script_generator.fix_compilation_error(
-            script=current_script, error_output=error_text, topic=topic
-        )
-        script_path.write_text(fixed)
-        print(f"  Overwritten script: {script_path}")
+        try:
+            fixed, fix_usage = self.script_generator.fix_compilation_error(
+                script=current_script, error_output=error_text, topic=topic
+            )
+            script_path.write_text(fixed)
+            print(f"  Overwritten script: {script_path}")
+        except Exception as fix_exc:  # noqa: BLE001
+            print(f"  Fix LLM call failed ({fix_exc}); keeping script unchanged.")
+            fix_usage = LLMUsage()
         return fix_usage
 
     def _review_and_update(
@@ -245,7 +249,7 @@ class CourseWorkflow:
                 final_video = self._run_single_iteration(
                     slug=slug, script_path=script_path, out=out
                 )
-            except (RuntimeError, FileNotFoundError) as exc:
+            except (RuntimeError, FileNotFoundError, ValueError) as exc:
                 if iteration >= max_iters - 1:
                     raise
                 fix_usage = self._handle_render_error(
@@ -257,9 +261,13 @@ class CourseWorkflow:
             if ctx["skip_review"] or iteration >= max_iters - 1:
                 break
 
-            changed, review_usage = self._review_and_update(
-                script_path=script_path, video_path=final_video, topic=topic
-            )
+            try:
+                changed, review_usage = self._review_and_update(
+                    script_path=script_path, video_path=final_video, topic=topic
+                )
+            except Exception as review_exc:  # noqa: BLE001
+                print(f"  Review step failed ({review_exc}); accepting video as-is.")
+                break
             tracker.record(f"Step 3 {iter_label} - video review", review_usage)
             if not changed:
                 break
