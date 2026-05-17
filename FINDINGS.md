@@ -4,8 +4,8 @@ Errors discovered during stability analysis, with corresponding fix commits.
 
 | Commit | Error (≤6 words) |
 |--------|------------------|
-| *(pending)* | Manim error not passed to fixer |
-| *(pending)* | ValueError escapes render loop |
-| *(pending)* | Structured output parse kills pipeline |
-| *(pending)* | Fix LLM failure kills whole run |
-| *(pending)* | Review failure uncaught in loop |
+| `5bec7a9` | Manim error not passed to fixer |
+| `5bec7a9` | ValueError escapes render loop |
+| `5bec7a9` | Structured output parse kills pipeline |
+| `5bec7a9` | Fix LLM failure kills whole run |
+| `5bec7a9` | Review failure uncaught in loop |
