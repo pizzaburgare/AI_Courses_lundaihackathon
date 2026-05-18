@@ -24,6 +24,10 @@ os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
 _DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 _MIN_AUDIO_CHANNELS = 2
 
+# Module-level model cache so the heavy model load happens at most once per
+# process, even if multiple QwenTTSEngine instances are created.
+_model_cache: dict[str, Any] = {}
+
 
 class QwenTTSEngine(TTSEngine):
     """TTS engine using Qwen3-TTS models for speech synthesis and voice cloning."""
@@ -56,15 +60,15 @@ class QwenTTSEngine(TTSEngine):
         )
 
     def _load_model(self) -> Any:
-        if self._model is None:
+        if self.model_id not in _model_cache:
             from qwen_tts import Qwen3TTSModel
 
-            self._model = Qwen3TTSModel.from_pretrained(
+            _model_cache[self.model_id] = Qwen3TTSModel.from_pretrained(
                 self.model_id,
                 device_map=self._device_map(),
                 dtype=self._dtype(),
             )
-        return self._model
+        return _model_cache[self.model_id]
 
     @staticmethod
     def _device_map() -> str:
