@@ -60,7 +60,7 @@ def _presynthesise_audio(
     Only texts whose cache file is missing are synthesised.  Returns the number
     of texts that required synthesis (cache misses).
     """
-    from src.rendering.audio import _engine_cache_salt
+    from src.rendering.audio import _engine_cache_salt, _synthesize_with_timeout
     from src.tts import get_default_engine
 
     engine = get_default_engine()
@@ -83,30 +83,14 @@ def _presynthesise_audio(
     channels = 1
     sample_width = 2  # 16-bit
 
-    # Use batch synthesis when the engine supports it natively.
-    # Adaptive: start at TTS_BATCH_SIZE, halve on GPU OOM, retry the same chunk.
-    batch_size = int(os.environ.get("TTS_BATCH_SIZE", "8"))
-    missing_texts = [text for text, _key, _path in missing]
-    results: list[tuple[np.ndarray, int]] = []
-    chunk_start = 0
-    while chunk_start < len(missing_texts):
-        chunk = missing_texts[chunk_start : chunk_start + batch_size]
-        try:
-            results.extend(engine.synthesize_batch(chunk))
-            chunk_start += len(chunk)
-        except RuntimeError as exc:
-            if "out of memory" in str(exc).lower() and batch_size > 1:
-                batch_size = max(1, batch_size // 2)
-                print(f"  TTS OOM, retrying with batch_size={batch_size}")
-            else:
-                raise TTSSynthesisError(
-                    f"TTS batch synthesis failed (batch_size={batch_size}): {exc}"
-                ) from exc
-
     audio_cache_dir.mkdir(parents=True, exist_ok=True)
-    for i, ((_text, _key, cached_path), (audio, sr)) in enumerate(
-        zip(missing, results, strict=True), 1
-    ):
+    for i, (text, _key, cached_path) in enumerate(missing, 1):
+        word_count = max(len(text.split()), 1)
+        try:
+            audio, sr = _synthesize_with_timeout(engine, text, word_count)
+        except RuntimeError as exc:
+            raise TTSSynthesisError(f"TTS synthesis failed: {exc}") from exc
+
         audio_int16 = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16)
         with wave.open(str(cached_path), "wb") as wf:
             wf.setnchannels(channels)

@@ -134,15 +134,17 @@ def _synthesize_with_timeout(
     engine: TTSEngine, text: str, word_count: int
 ) -> tuple[np.ndarray, int]:
     """Run TTS synthesis with a timeout, raising RuntimeError on timeout or bad output."""
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(engine.synthesize, text)
-        try:
-            audio, sr = future.result(timeout=TTS_SYNTHESIS_TIMEOUT_SECONDS)
-        except FuturesTimeoutError as err:
-            raise RuntimeError(
-                f"TTS synthesis timed out after {TTS_SYNTHESIS_TIMEOUT_SECONDS}s"
-                f"({word_count} words)"
-            ) from err
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(engine.synthesize, text)
+    try:
+        audio, sr = future.result(timeout=TTS_SYNTHESIS_TIMEOUT_SECONDS)
+        executor.shutdown(wait=False)
+    except FuturesTimeoutError as err:
+        # Don't wait=True — thread can't be killed; orphan it (daemon, dies with process).
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise RuntimeError(
+            f"TTS synthesis timed out after {TTS_SYNTHESIS_TIMEOUT_SECONDS}s ({word_count} words)"
+        ) from err
 
     max_duration = word_count * TTS_MAX_SECONDS_PER_WORD
     if len(audio) / sr > max_duration:
