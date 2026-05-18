@@ -10,3 +10,5 @@ Errors discovered during stability analysis, with corresponding fix commits.
 | `5bec7a9` | Fix LLM failure kills whole run |
 | `5bec7a9` | Review failure uncaught in loop |
 | `156b6b4` | TTS OOM corrupts Manim script |
+| `a1537eb` | Fixed batch_size=1 kills TTS perf |
+| `a1537eb` | Qwen model reloaded each process |
