@@ -18,6 +18,10 @@ from src.core.paths import CACHE_AUDIO_DIR, CACHE_MANIM_DIR
 logger = logging.getLogger(__name__)
 
 
+class TTSSynthesisError(RuntimeError):
+    """Raised when TTS pre-synthesis fails — not a Manim script error."""
+
+
 # ---------------------------------------------------------------------------
 # Audio pre-synthesis helpers
 # ---------------------------------------------------------------------------
@@ -86,7 +90,12 @@ def _presynthesise_audio(
     results: list[tuple[np.ndarray, int]] = []
     for chunk_start in range(0, len(missing_texts), batch_size):
         chunk = missing_texts[chunk_start : chunk_start + batch_size]
-        results.extend(engine.synthesize_batch(chunk))
+        try:
+            results.extend(engine.synthesize_batch(chunk))
+        except Exception as exc:
+            raise TTSSynthesisError(
+                f"TTS batch synthesis failed (batch size {batch_size}): {exc}"
+            ) from exc
 
     audio_cache_dir.mkdir(parents=True, exist_ok=True)
     for i, ((_text, _key, cached_path), (audio, sr)) in enumerate(

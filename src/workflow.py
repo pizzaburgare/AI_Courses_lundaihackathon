@@ -40,6 +40,7 @@ from src.core.settings import (
 from src.preprocessing import DocumentSelectorAgent
 from src.preprocessing.batch_process import batch_process
 from src.rendering import render_and_merge
+from src.rendering.render import TTSSynthesisError
 from src.scripting import ManimScriptGenerator
 
 load_dotenv()
@@ -250,6 +251,8 @@ class CourseWorkflow:
                     slug=slug, script_path=script_path, out=out
                 )
             except (RuntimeError, FileNotFoundError, ValueError) as exc:
+                if isinstance(exc, TTSSynthesisError):
+                    raise  # TTS failures are not fixable by patching the script
                 if iteration >= max_iters - 1:
                     raise
                 fix_usage = self._handle_render_error(
