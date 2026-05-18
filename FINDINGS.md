@@ -9,3 +9,4 @@ Errors discovered during stability analysis, with corresponding fix commits.
 | `5bec7a9` | Structured output parse kills pipeline |
 | `5bec7a9` | Fix LLM failure kills whole run |
 | `5bec7a9` | Review failure uncaught in loop |
+| `156b6b4` | TTS OOM corrupts Manim script |
