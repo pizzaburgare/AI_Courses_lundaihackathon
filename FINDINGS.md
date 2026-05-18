@@ -12,4 +12,4 @@ Errors discovered during stability analysis, with corresponding fix commits.
 | `156b6b4` | TTS OOM corrupts Manim script |
 | `a1537eb` | Fixed batch_size=1 kills TTS perf |
 | `a1537eb` | Qwen model reloaded each process |
-| `HEAD` | synthesize_batch hangs with no timeout |
+| `2f683d8` | synthesize_batch hangs with no timeout |
