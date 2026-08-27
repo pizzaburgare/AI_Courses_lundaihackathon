@@ -10,7 +10,6 @@ from manim.mobject.mobject import Mobject
 from manim.mobject.text.numbers import DecimalNumber
 from manim.mobject.text.tex_mobject import SingleStringMathTex
 from manim.mobject.text.text_mobject import MarkupText, Text
-from manim.mobject.types.vectorized_mobject import VMobject
 
 from grasp.core import Violation
 
@@ -53,8 +52,6 @@ def on_screen_text(scene: Scene) -> list[Mobject]:
             if not isinstance(mobject, TEXTUAL):
                 continue
             for part in mobject.family_members_with_points():
-                if not isinstance(part, VMobject):
-                    continue
                 opacity = max(float(part.get_fill_opacity()), float(part.get_stroke_opacity()))
                 if opacity > MIN_OPACITY:
                     found[id(mobject)] = mobject

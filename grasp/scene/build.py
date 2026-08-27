@@ -52,8 +52,10 @@ def build_scene(script: Script, failure: str = "") -> str:
         "",
         script.summary.strip(),
         "",
-        f"Video {script.part} of {script.parts} for topic {script.topic_id}. "
-        f"{len(script.beats)} beats, {script.words()} narration words.",
+        (
+            f"Video {script.part} of {script.parts} for topic {script.topic_id}. "
+            f"{len(script.beats)} beats, {script.words()} narration words."
+        ),
         "",
         *beats,
     ]

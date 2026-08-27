@@ -14,7 +14,7 @@ rather than about Manim.
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from grasp.core import (
@@ -40,9 +40,10 @@ from grasp.topics import plan_topics
 MAX_RENDER_ATTEMPTS = 3
 
 
-def log(step: str, status: str, detail: str = "", into: Path | None = None) -> None:
-    """One line of operator output: ``HH:MM:SS step status detail``. No banner, no spinner."""
-    line = f"{datetime.now().strftime('%H:%M:%S')} {step:<7} {status:<7} {detail}".rstrip()
+def log(step: str, state: str, detail: str = "", into: Path | None = None) -> None:
+    """One line of operator output: ``HH:MM:SS step state detail``. No banner, no spinner."""
+    now = datetime.now(UTC).astimezone()  # aware, but still the operator's wall clock
+    line = f"{now.strftime('%H:%M:%S')} {step:<7} {state:<7} {detail}".rstrip()
     print(line, flush=True)
     if into is not None:
         into.parent.mkdir(parents=True, exist_ok=True)
@@ -121,7 +122,7 @@ def run_topics(course: str) -> Path:
     return path
 
 
-def run_scripts(course: str, topic_id: str, force: bool = False) -> list[Path]:
+def run_scripts(course: str, topic_id: str, *, force: bool = False) -> list[Path]:
     """One topic -> one ``script.json`` per video. Returns their paths, in playing order.
 
     The parts are written one at a time, each with the earlier ones in front of it, which
@@ -170,7 +171,7 @@ def run_scene(video: Path, failure: str = "") -> Path:
     return path
 
 
-def run_render(video: Path, quality: str = "l", fix: bool = True) -> Check:
+def run_render(video: Path, quality: str = "l", *, fix: bool = True) -> Check:
     """Render one video, rewriting ``scene.py`` from the failures until it passes.
 
     Draft quality is used for every attempt: a check that fails at ``-ql`` fails at
@@ -202,17 +203,18 @@ def run_topic(
     course: str,
     topic_id: str,
     quality: str = "l",
+    *,
     fix: bool = True,
     force: bool = False,
     part: int = 0,
 ) -> list[Check]:
-    """script -> scene -> render for every video of one topic.
+    """Script -> scene -> render for every video of one topic.
 
     A step whose output file already exists is skipped, so re-running after a crash picks
     up where it stopped. ``--force`` runs all of them anyway.
     """
     started = time.time()
-    scripts = run_scripts(course, topic_id, force)
+    scripts = run_scripts(course, topic_id, force=force)
     checks: list[Check] = []
 
     for path in scripts:
@@ -229,7 +231,7 @@ def run_topic(
             log("scene", "skip", "scene.py exists", into=log_file)
 
         if force or not (video / "lesson.mp4").is_file():
-            checks.append(run_render(video, quality, fix))
+            checks.append(run_render(video, quality, fix=fix))
         else:
             check = video / "check.json"
             checks.append(read_json(check, Check) if check.is_file() else Check(ok=True))
@@ -242,6 +244,7 @@ def run_topic(
 def run_course(
     course: str,
     quality: str = "l",
+    *,
     force: bool = False,
     start: str = "",
     only: str = "",
@@ -267,6 +270,7 @@ def run_course(
     failed: list[str] = []
 
     def one(topic: Topic) -> None:
+        # pylint: disable=broad-exception-caught
         try:
             run_topic(course, topic.id, quality, fix=True, force=force)
         except Exception as err:  # noqa: BLE001 - one bad topic must not stop the course
@@ -311,14 +315,12 @@ def status(course: str) -> list[tuple[str, ...]]:
             verdict = "clean"
         else:
             verdict = f"{len(report.violations) + len(report.problems)} flagged"
-        rows.append(
-            (
-                f"{topic_id}.{part}",
-                title,
-                "ok" if (video / "script.json").is_file() else "-",
-                "ok" if (video / "scene.py").is_file() else "-",
-                clock(report.video_seconds) if report and (video / "lesson.mp4").is_file() else "-",
-                verdict,
-            )
-        )
+        rows.append((
+            f"{topic_id}.{part}",
+            title,
+            "ok" if (video / "script.json").is_file() else "-",
+            "ok" if (video / "scene.py").is_file() else "-",
+            clock(report.video_seconds) if report and (video / "lesson.mp4").is_file() else "-",
+            verdict,
+        ))
     return rows

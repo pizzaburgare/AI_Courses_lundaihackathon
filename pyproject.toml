@@ -32,74 +32,132 @@ packages = ["grasp"]
 
 [dependency-groups]
 dev = [
-    "pyright>=1.1.0",
     "ruff>=0.15.4",
     "packaging>=26.0",
+    "mypy>=2.3.1",
+    "pylint>=4.0.7",
 ]
-
-# Pyright
-[tool.pyright]
-pythonVersion = "3.13"
-typeCheckingMode = "basic"
-reportMissingModuleSource = false
-venvPath = "."
-venv = ".venv"
-# Exclude generated/cache artefacts
-exclude = [
-    ".cache",
-    "courses",
-    "output",
-    ".venv",
-    "**/__pycache__",
-    "**/.*",
-    "**/node_modules",
-]
-
-
-
-
-
-# Ruff
-[tool.ruff.lint.per-file-ignores]
-# Generated Manim scenes use `from manim import *` by convention
-"courses/*/videos/*/scene.py" = ["F403", "F405"]
-
 
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+preview = true
+# Generated trees: LLM-written scenes and render artefacts are not hand-maintained source.
+extend-exclude = [".cache", "courses", "output", "media", "assets"]
 
 [tool.ruff.lint]
-select = [
-    "E",      # pycodestyle errors (PEP 8 basics)
-    "W",      # pycodestyle warnings
-    "F",      # pyflakes (logical errors, unused imports)
-    "I",      # isort (automatically sorts imports)
-    "B",      # flake8-bugbear (flags common bugs and design problems)
-    "UP",     # pyupgrade (automatically updates syntax to modern Python)
-    "SIM",    # flake8-simplify (suggests code simplifications)
-    "RUF",    # Ruff-specific rules
-    "ANN",    # type annotations required
-    "BLE",    # blind exception catches
-    "TRY",    # exception handling best practices
-    "N",      # PEP 8 naming conventions
-    "PLR2004",# magic value literals
-    "C90",    # McCabe cyclomatic complexity
-    "TID",    # tidy imports (ban relative imports)
-    "ISC",    # implicit string concatenation
-]
+# Everything ruff has, including preview rules. Subtractions below are deliberate.
+select = ["ALL"]
 ignore = [
-    "ANN002",  # *args annotation - rarely adds value
-    "ANN003",  # **kwargs annotation - rarely adds value
-    "ANN401",  # use of Any - acceptable for complex types
-    "TRY003",  # allow bare except clauses
-    "ISC001",  # allow implicit string concatenation (e.g. multi-line docstrings)
+    # Docstring ceremony: this codebase documents intent in prose, not in Args/Returns/Raises
+    # blocks. Turning these on adds ~110 lines of boilerplate and no information.
+    "D105", "D107", "D203", "D213", "D401", "DOC201", "DOC501", "DOC402",
+    "ANN002", "ANN003",    # *args / **kwargs annotations - rarely add value
+    "ANN401",              # Any - the untyped Qwen model and forwarded *args need it
+    "CPY001",              # no per-file copyright header; LICENSE covers the repo
+    "COM812",              # trailing commas are the formatter's job, and it disagrees here
+    "ISC001",              # implicit concat is how long messages are written here
+    "TRY003",              # long messages at the raise site - they are the operator's text
+    "EM101", "EM102",      # ditto: the message belongs at the raise, not in a temp variable
+    "PLC0415",             # torch, whisper, moviepy and av are lazy on purpose: slow imports
+    "T201",                # print is the CLI's output mechanism, not a stray debug statement
+    "S404", "S603",        # the one subprocess call is the manim render, with our own argv
+    "PLR0915",             # statements per function: see max-complexity below
 ]
 
 [tool.ruff.lint.mccabe]
 # One long imperative function beats five short ones calling each other.
 max-complexity = 20
 
+[tool.ruff.lint.pylint]
+# Same reasoning: the pipeline steps are meant to read top to bottom.
+max-args = 8
+max-locals = 25
+max-statements = 80
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+# style.md is a prompt, not source. Its long narrator.say() lines demonstrate that narration
+# is one unbroken string; preview mode would reformat the code blocks and change that lesson.
+exclude = ["*.md"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["grasp"]
+strict = true
+# --strict stops short of these
+warn_unreachable = true
+warn_unused_configs = true
+strict_equality_for_none = true
+disallow_untyped_globals = true
+disallow_redefinition = true
+# Every opt-in error code mypy ships. disallow_any_* stays off: the untyped Qwen model and
+# the *args forwarded to scene.play are genuinely Any.
+enable_error_code = [
+    "deprecated",
+    "exhaustive-match",
+    "explicit-override",
+    "ignore-without-code",
+    "mutable-override",
+    "possibly-undefined",
+    "redundant-expr",
+    "redundant-self",
+    "truthy-bool",
+    "truthy-iterable",
+    "unused-awaitable",
+    "unused-ignore",
+]
+
+# No stubs and no py.typed upstream. Their surfaces are exercised by a render, not a checker.
+[[tool.mypy.overrides]]
+module = ["qwen_tts.*", "whisper.*", "moviepy.*"]
+ignore_missing_imports = true
+
+[tool.pylint.main]
+py-version = "3.13"
+ignore-paths = ["^(\\.cache|courses|output|media|assets)/.*"]
+# Every optional checker pylint ships, minus the ones ruff already owns.
+load-plugins = [
+    "pylint.extensions.bad_builtin",
+    "pylint.extensions.check_elif",
+    "pylint.extensions.comparison_placement",
+    "pylint.extensions.confusing_elif",
+    "pylint.extensions.consider_refactoring_into_while_condition",
+    "pylint.extensions.dict_init_mutate",
+    "pylint.extensions.docstyle",
+    "pylint.extensions.dunder",
+    "pylint.extensions.empty_comment",
+    "pylint.extensions.eq_without_hash",
+    "pylint.extensions.for_any_all",
+    "pylint.extensions.no_self_use",
+    "pylint.extensions.overlapping_exceptions",
+    "pylint.extensions.private_import",
+    "pylint.extensions.redefined_loop_name",
+    "pylint.extensions.redefined_variable_type",
+    "pylint.extensions.set_membership",
+    "pylint.extensions.typing",
+]
+
+[tool.pylint."messages control"]
+enable = ["all"]
+disable = [
+    "import-outside-toplevel",  # same lazy imports as ruff's PLC0415
+    "locally-disabled",         # reporting our own disables back to us is not a finding
+    "suppressed-message",
+    # ruff owns these, at this project's thresholds
+    "use-implicit-booleaness-not-comparison-to-zero",  # `returncode != 0` states the intent
+    "line-too-long",
+    "unused-import",
+    "wrong-import-order",
+    "wrong-import-position",
+    "ungrouped-imports",
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "too-many-locals",
+    "too-many-statements",
+]
+
+[tool.pylint.design]
+max-args = 8
+max-locals = 25

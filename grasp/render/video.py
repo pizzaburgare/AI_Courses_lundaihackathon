@@ -23,7 +23,7 @@ RENDER_TIMEOUT_SECONDS = 1800
 TIMEOUT_RETURNCODE = 124
 STDERR_TAIL_LINES = 25
 MIN_SPEECH_RATIO = 0.5  # below this the video is mostly dead air
-VIDEO_REPORT = re.compile(r"File ready at '(.+?\.mp4)'", re.S)
+VIDEO_REPORT = re.compile(r"File ready at '(.+?\.mp4)'", re.DOTALL)
 
 
 def render_video(video: Path, quality: str = "l") -> Check:

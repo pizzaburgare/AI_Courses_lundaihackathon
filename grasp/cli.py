@@ -9,6 +9,7 @@ import argparse
 import os
 import sys
 import time
+from pathlib import Path
 
 from grasp.core import MODEL_ENV, course_dir, video_dirs
 from grasp.pipeline import (
@@ -35,7 +36,7 @@ def parse(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="grasp", description="Course materials to videos.")
     subs = parser.add_subparsers(dest="command", required=True)
 
-    def add(name: str, help_text: str, topic: bool = False) -> argparse.ArgumentParser:
+    def add(name: str, help_text: str, *, topic: bool = False) -> argparse.ArgumentParser:
         sub = subs.add_parser(name, parents=[common], help=help_text)
         sub.add_argument("course", help="a name under courses/, or a path to a course directory")
         if topic:
@@ -66,7 +67,7 @@ def parse(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def videos_for(args: argparse.Namespace) -> list:
+def videos_for(args: argparse.Namespace) -> list[Path]:
     """The video directories a ``scene`` or ``render`` command addresses."""
     found = video_dirs(args.course, args.topic_id, args.part)
     if not found:
@@ -88,11 +89,23 @@ def dispatch(args: argparse.Namespace) -> int:
         return 0
 
     if args.command == "course":
-        return run_course(args.course, args.quality, args.force, args.start, args.only, args.jobs)
+        return run_course(
+            args.course,
+            args.quality,
+            force=args.force,
+            start=args.start,
+            only=args.only,
+            jobs=args.jobs,
+        )
 
     if args.command == "topic":
         checks = run_topic(
-            args.course, args.topic_id, args.quality, not args.no_fix, args.force, args.part
+            args.course,
+            args.topic_id,
+            args.quality,
+            fix=not args.no_fix,
+            force=args.force,
+            part=args.part,
         )
         return 0 if all(check.ok for check in checks) else 1
 
@@ -101,14 +114,14 @@ def dispatch(args: argparse.Namespace) -> int:
     elif args.command == "topics":
         run_topics(args.course)
     elif args.command == "script":
-        paths = run_scripts(args.course, args.topic_id, args.force)
+        paths = run_scripts(args.course, args.topic_id, force=args.force)
         log("script", "ok", f"{len(paths)} videos, {clock(time.time() - started)}")
     elif args.command == "scene":
         for video in videos_for(args):
             run_scene(video)
             log("scene", "ok", str(video / "scene.py"))
     else:
-        checks = [run_render(v, args.quality, not args.no_fix) for v in videos_for(args)]
+        checks = [run_render(v, args.quality, fix=not args.no_fix) for v in videos_for(args)]
         return 0 if all(check.ok for check in checks) else 1
     return 0
 

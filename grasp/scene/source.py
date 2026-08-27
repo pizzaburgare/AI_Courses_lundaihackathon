@@ -100,12 +100,12 @@ def check_scene(source: str, script: Script) -> list[str]:
         return [*problems, str(exc)]
 
     planned = {" ".join(beat.narration.split()): beat.title for beat in script.beats}
-    for text in said:
-        if text not in planned:
-            problems.append(
-                "say() narrates text that is not in script.json - narration is copied "
-                f"verbatim, never paraphrased or reflowed: {text[:120]!r}"
-            )
+    problems.extend(
+        "say() narrates text that is not in script.json - narration is copied "
+        f"verbatim, never paraphrased or reflowed: {text[:120]!r}"
+        for text in said
+        if text not in planned
+    )
     unsaid = [title for key, title in planned.items() if key not in said]
     if unsaid:
         problems.append(

@@ -13,6 +13,7 @@ import hashlib
 import wave
 from pathlib import Path
 from types import TracebackType
+from typing import Any, Self
 
 import numpy as np
 from manim import Scene, config
@@ -34,7 +35,7 @@ class Slot:
     def __init__(self, narrator: "Narrator", start: float, duration: float) -> None:
         self.narrator, self.start, self.duration = narrator, start, duration
 
-    def __enter__(self) -> "Slot":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(
@@ -61,9 +62,10 @@ class Narrator:
         self.chapters: list[Chapter] = []
         self.violations: list[Violation] = []
         self.play = scene.play
-        scene.play = self.checked_play  # every play boundary is a layout checkpoint
+        # the monkeypatch is the mechanism: every play boundary is a layout checkpoint
+        scene.play = self.checked_play  # type: ignore[method-assign]
 
-    def checked_play(self, *args, **kwargs) -> None:
+    def checked_play(self, *args: Any, **kwargs: Any) -> None:
         """``scene.play``, plus the geometric check on the frame it leaves behind."""
         self.play(*args, **kwargs)
         self.violations.extend(check_layout(self.scene))
@@ -113,7 +115,7 @@ class Narrator:
             timeline[begin:end] = chunk[: end - begin]
 
         merged = self.video_dir / "narration.wav"
-        with wave.open(str(merged), "wb") as handle:
+        with wave.Wave_write(str(merged)) as handle:
             handle.setnchannels(channels)
             handle.setsampwidth(width)
             handle.setframerate(rate)

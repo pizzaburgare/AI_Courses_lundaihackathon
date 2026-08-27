@@ -7,29 +7,36 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  quality-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # manim builds against pango and cairo
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential pkg-config python3-dev libpango1.0-dev libcairo2-dev
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "latest"
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: "pyproject.toml"
+          python-version-file: ".python-version"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Install dependencies
         run: uv sync
 
-      - name: Code Quality - Ruff
-        run: uv run ruff check .
+      - name: Lint - Ruff
+        run: uv run ruff check
 
-      - name: Type Checking - Pyright
-        run: uv run pyright
+      - name: Format - Ruff
+        run: uv run ruff format --check
 
-      - name: Tests - Pytest
-        run: uv run pytest
+      - name: Type check - mypy
+        run: uv run mypy
+
+      - name: Static analysis - Pylint
+        run: uv run pylint grasp

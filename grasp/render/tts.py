@@ -9,6 +9,7 @@ import hashlib
 import wave
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -28,8 +29,6 @@ TIMEOUT_SECONDS_PER_CLIP = 300
 SAMPLE_WIDTH = 2
 STEREO = 2
 INT16_MAX = 32767
-
-_model: Any = None  # one model per process, loaded on first use
 
 
 def clip_path(audio_dir: Path, text: str) -> Path:
@@ -65,7 +64,7 @@ def synthesize(texts: list[str], audio_dir: Path) -> list[Path]:
                     f"TTS output rejected: {seconds:.1f}s for {words} words "
                     f"(limit {limit:.1f}s). Likely runaway model output."
                 )
-            with wave.open(str(path), "wb") as handle:
+            with wave.Wave_write(str(path)) as handle:
                 handle.setnchannels(1)
                 handle.setsampwidth(SAMPLE_WIDTH)
                 handle.setframerate(rate)
@@ -75,27 +74,31 @@ def synthesize(texts: list[str], audio_dir: Path) -> list[Path]:
     return paths
 
 
+@cache
+def load_model() -> Any:
+    """The Qwen model, loaded on the best available device. Once per process."""
+    import torch
+    from qwen_tts import Qwen3TTSModel
+
+    if torch.cuda.is_available():
+        device, dtype = "cuda:0", torch.bfloat16
+    elif torch.backends.mps.is_available():
+        device, dtype = "mps", torch.bfloat16
+    else:
+        device, dtype = "cpu", torch.float32
+    return Qwen3TTSModel.from_pretrained(QWEN_MODEL, device_map=device, dtype=dtype)
+
+
 def generate(texts: list[str]) -> list[tuple[np.ndarray, int]]:
-    """Qwen native batch synthesis. Loads the model on first use, once per process."""
-    global _model  # one model per process is the point
+    """Qwen native batch synthesis."""
     import torch
 
-    if _model is None:
-        from qwen_tts import Qwen3TTSModel
-
-        if torch.cuda.is_available():
-            device, dtype = "cuda:0", torch.bfloat16
-        elif torch.backends.mps.is_available():
-            device, dtype = "mps", torch.bfloat16
-        else:
-            device, dtype = "cpu", torch.float32
-        _model = Qwen3TTSModel.from_pretrained(QWEN_MODEL, device_map=device, dtype=dtype)
-
-    kind = _model.model.tts_model_type
+    model = load_model()
+    kind = model.model.tts_model_type
     count = len(texts)
     with torch.inference_mode():
         if kind == "base":
-            waves, rate = _model.generate_voice_clone(
+            waves, rate = model.generate_voice_clone(
                 text=texts,
                 language=[QWEN_LANGUAGE] * count,
                 ref_audio=[str(QWEN_REF_AUDIO)] * count,
@@ -103,11 +106,11 @@ def generate(texts: list[str]) -> list[tuple[np.ndarray, int]]:
                 x_vector_only_mode=[True] * count,
             )
         elif kind == "custom_voice":
-            waves, rate = _model.generate_custom_voice(
+            waves, rate = model.generate_custom_voice(
                 text=texts, language=[QWEN_LANGUAGE] * count, speaker=[QWEN_SPEAKER] * count
             )
         elif kind == "voice_design":
-            waves, rate = _model.generate_voice_design(
+            waves, rate = model.generate_voice_design(
                 text=texts, instruct=[QWEN_SPEAKER] * count, language=[QWEN_LANGUAGE] * count
             )
         else:

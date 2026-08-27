@@ -7,6 +7,7 @@ called on a single file from a REPL without touching a course directory.
 
 import base64
 import io
+import tempfile
 from pathlib import Path
 
 from PIL import Image
@@ -81,9 +82,7 @@ def transcribe(source: Path) -> Transcript:
         )
 
     elif suffix in VIDEOS:
-        import tempfile
-
-        import whisper  # pyright: ignore[reportMissingTypeStubs]
+        import whisper
         from moviepy import VideoFileClip
 
         with tempfile.NamedTemporaryFile(suffix=".mp3") as audio:

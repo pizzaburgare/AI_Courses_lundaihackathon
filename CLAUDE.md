@@ -27,14 +27,15 @@ Keep agents pure. No side effects, no shared state between steps. This makes it 
 1. **NEVER run the full lesson generation pipeline autonomously** (`uv run lesson ...`). This is expensive and must be human-initiated.
 2. **Before completing any task**, always make sure all tests and linters pass:
 ```bash
-uv run ruff check && uv run pyright && uv run pytest
+uv run ruff check && uv run ruff format --check && uv run mypy && uv run pylint grasp
 ```
 
 ## Commands
 
 ```bash
-uv sync                # Install dependencies
-uv run pytest          # Run tests
-uv run ruff check      # Lint
-uv run pyright         # Type check
+uv sync                     # Install dependencies
+uv run ruff check           # Lint
+uv run ruff format          # Format
+uv run mypy                 # Type check (strict, over grasp/)
+uv run pylint grasp         # Static analysis
 ```
