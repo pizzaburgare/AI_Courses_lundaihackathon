@@ -43,19 +43,6 @@ def _read_wav_duration(path: Path) -> float:
         return wf.getnframes() / wf.getframerate()
 
 
-def _read_wav_params(path: Path) -> tuple[int, int, int]:
-    """Read WAV file and return (sample_rate, n_channels, sample_width)."""
-    with wave.open(str(path), "rb") as wf:
-        return wf.getframerate(), wf.getnchannels(), wf.getsampwidth()
-
-
-def _read_wav_data(path: Path) -> NDArray[np.int16]:
-    """Read WAV file and return audio data as int16 numpy array."""
-    with wave.open(str(path), "rb") as wf:
-        frames = wf.readframes(wf.getnframes())
-        return np.frombuffer(frames, dtype=np.int16)
-
-
 def _audio_logs_enabled() -> bool:
     value = os.environ.get("AUDIO_MANAGER_VERBOSE", "1").strip().lower()
     return value in {"1", "true", "yes", "on"}

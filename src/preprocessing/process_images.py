@@ -9,8 +9,6 @@ from PIL import Image
 from src.core.llm_metrics import LLMUsage, extract_llm_usage, make_openrouter_llm
 from src.core.paths import IMAGE_TRANSCRIBER_PROMPT
 
-SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff"}
-
 # Max dimension (width or height) before downscaling
 _MAX_IMAGE_DIM = 1920
 

@@ -140,114 +140,11 @@ class RelativeIndenter:
 # ---------------------------------------------------------------------------
 
 
-def map_patches(texts: list[str], patches: list, debug: bool) -> list:
-    """Remap patch positions from search text coordinates to original text coordinates."""
-    search_text, _, original_text = texts
-
-    dmp = diff_match_patch()
-    dmp.Diff_Timeout = 5
-
-    diff_s_o = dmp.diff_main(search_text, original_text)
-
-    if debug:
-        html = dmp.diff_prettyHtml(diff_s_o)
-        Path("tmp.html").write_text(html)
-        dump(len(search_text))
-        dump(len(original_text))
-
-    for patch in patches:
-        start1 = patch.start1
-        start2 = patch.start2
-
-        patch.start1 = dmp.diff_xIndex(diff_s_o, start1)
-        patch.start2 = dmp.diff_xIndex(diff_s_o, start2)
-
-        if debug:
-            print()
-            print(start1, repr(search_text[start1 : start1 + 50]))
-            print(patch.start1, repr(original_text[patch.start1 : patch.start1 + 50]))
-            print(patch.diffs)
-            print()
-
-    return patches
-
-
 def relative_indent(texts: list[str]) -> tuple[RelativeIndenter, list[str]]:
     """Convert texts to relative indentation format."""
     ri = RelativeIndenter(texts)
     texts = list(map(ri.make_relative, texts))
     return ri, texts
-
-
-LINE_PADDING = 100
-
-
-def line_pad(text: str) -> str:
-    """Add newline padding before and after text."""
-    padding = "\n" * LINE_PADDING
-    return padding + text + padding
-
-
-def line_unpad(text: str) -> str | None:
-    """Remove newline padding from text, returning None if padding is invalid."""
-    if set(text[:LINE_PADDING] + text[-LINE_PADDING:]) != set("\n"):
-        return None
-    return text[LINE_PADDING:-LINE_PADDING]
-
-
-def dmp_apply(texts: list[str], remap: bool = True) -> str | None:
-    """Apply diff-match-patch to transform original text using search/replace pair."""
-    debug = False
-
-    search_text, replace_text, original_text = texts
-
-    dmp = diff_match_patch()
-    dmp.Diff_Timeout = 5
-
-    if remap:
-        dmp.Match_Threshold = 0.95
-        dmp.Match_Distance = 500
-        dmp.Match_MaxBits = 128
-        dmp.Patch_Margin = 32
-    else:
-        dmp.Match_Threshold = 0.5
-        dmp.Match_Distance = 100_000
-        dmp.Match_MaxBits = 32
-        dmp.Patch_Margin = 8
-
-    diff = dmp.diff_main(search_text, replace_text, False)
-    dmp.diff_cleanupSemantic(diff)
-    dmp.diff_cleanupEfficiency(diff)
-
-    patches = dmp.patch_make(search_text, diff)
-
-    if debug:
-        html = dmp.diff_prettyHtml(diff)
-        Path("tmp.search_replace_diff.html").write_text(html)
-        for d in diff:
-            print(d[0], repr(d[1]))
-        for patch in patches:
-            start1 = patch.start1
-            print()
-            print(start1, repr(search_text[start1 : start1 + 10]))
-            print(start1, repr(replace_text[start1 : start1 + 10]))
-            print(patch.diffs)
-
-    if remap:
-        patches = map_patches(texts, patches, debug)
-
-    new_text, success = dmp.patch_apply(patches, original_text)
-    all_success = False not in success
-
-    if debug:
-        print(dmp.patch_toText(patches))
-        dump(success)
-        dump(all_success)
-
-    if not all_success:
-        return None
-
-    return new_text
 
 
 def lines_to_chars(lines: str, mapping: list[str]) -> str:
@@ -320,34 +217,6 @@ def dmp_lines_apply(texts: list[str]) -> str | None:
     return new_text
 
 
-def diff_lines(search_text: str, replace_text: str) -> list:
-    """Generate a unified diff between search and replace text at line level."""
-    dmp = diff_match_patch()
-    dmp.Diff_Timeout = 5
-
-    search_lines, replace_lines, mapping = dmp.diff_linesToChars(search_text, replace_text)
-
-    diff_lines_ = dmp.diff_main(search_lines, replace_lines, False)
-    dmp.diff_cleanupSemantic(diff_lines_)
-    dmp.diff_cleanupEfficiency(diff_lines_)
-
-    diff = list(diff_lines_)
-    dmp.diff_charsToLines(diff, mapping)
-
-    udiff = []
-    for d, lines in diff:
-        if d < 0:
-            d = "-"
-        elif d > 0:
-            d = "+"
-        else:
-            d = " "
-        for line in lines.splitlines(keepends=True):
-            udiff.append(d + line)
-
-    return udiff
-
-
 # ---------------------------------------------------------------------------
 # Core search/replace strategies
 # ---------------------------------------------------------------------------
@@ -406,53 +275,6 @@ def git_cherry_pick_osr_onto_o(texts: list[str]) -> str | None:
         return new_text
 
 
-def git_cherry_pick_sr_onto_so(texts: list[str]) -> str | None:
-    """Apply search/replace via git cherry-pick: S->R branch, cherry-pick onto S->O."""
-    if git is None:
-        return None
-
-    search_text, replace_text, original_text = texts
-
-    with GitTemporaryDirectory() as dname:
-        repo = git.Repo(dname)
-        fname = Path(dname) / "file.txt"
-
-        fname.write_text(search_text)
-        repo.git.add(str(fname))
-        repo.git.commit("-m", "search")
-        search_hash = repo.head.commit.hexsha
-
-        # make search->replace
-        fname.write_text(replace_text)
-        repo.git.add(str(fname))
-        repo.git.commit("-m", "replace")
-        replace_hash = repo.head.commit.hexsha
-
-        # go back to search
-        repo.git.checkout(search_hash)
-
-        # make search->original
-        fname.write_text(original_text)
-        repo.git.add(str(fname))
-        repo.git.commit("-m", "original")
-
-        # cherry pick replace onto original
-        try:
-            repo.git.cherry_pick(replace_hash, "--minimal")
-        except (ODBError, GitError):
-            # merge conflicts!
-            return None
-
-        new_text = fname.read_text()
-        return new_text
-
-
-class SearchTextNotUniqueError(ValueError):
-    """Raised when search text matches multiple locations in the original."""
-
-    pass
-
-
 # ---------------------------------------------------------------------------
 # Preprocessor / strategy tables
 # ---------------------------------------------------------------------------
@@ -465,23 +287,7 @@ all_preprocs = [
     (True, True, False),
 ]
 
-always_relative_indent = [
-    (False, True, False),
-    (True, True, False),
-]
-
 editblock_strategies = [
-    (search_and_replace, all_preprocs),
-    (git_cherry_pick_osr_onto_o, all_preprocs),
-    (dmp_lines_apply, all_preprocs),
-]
-
-never_relative = [
-    (False, False),
-    (True, False),
-]
-
-udiff_strategies = [
     (search_and_replace, all_preprocs),
     (git_cherry_pick_osr_onto_o, all_preprocs),
     (dmp_lines_apply, all_preprocs),
