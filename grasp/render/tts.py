@@ -15,10 +15,10 @@ from typing import Any
 
 import numpy as np
 
-from grasp.core import ROOT
+from grasp.core import LANGUAGE, ROOT
 
 QWEN_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
-QWEN_LANGUAGE = "English"
+QWEN_LANGUAGE = LANGUAGE  # the voice speaks whatever the prompts were told to write
 QWEN_SPEAKER = "Ryan"
 QWEN_REF_AUDIO = ROOT / "grasp" / "render" / "clone.wav"
 

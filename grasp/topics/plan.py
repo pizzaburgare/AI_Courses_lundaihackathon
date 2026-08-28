@@ -11,9 +11,10 @@ run, inspected and re-run without a course directory in sight.
 
 from pathlib import Path
 
-from grasp.core import Corpus, Topics, ask_valid
+from grasp.core import LANGUAGE_RULE, Corpus, Topics, ask_valid
 
-INSTRUCTIONS = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
+PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
+INSTRUCTIONS = PROMPT + "\n" + LANGUAGE_RULE
 
 MIN_MINUTES, MAX_MINUTES = 3, 45  # per topic; longer than this is two concepts, not one
 

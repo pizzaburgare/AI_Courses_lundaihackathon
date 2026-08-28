@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from grasp.core import Transcript, ask, ask_json
+from grasp.core import FILE_MODEL, Transcript, ask, ask_json
 
 INSTRUCTIONS = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
 
@@ -64,6 +64,7 @@ def transcribe(source: Path) -> Transcript:
                 {"type": "text", "text": "Transcribe this document."},
             ],
             Transcript,
+            FILE_MODEL,
         )
 
     elif suffix in IMAGES:
@@ -79,6 +80,7 @@ def transcribe(source: Path) -> Transcript:
                 {"type": "text", "text": "Transcribe this image."},
             ],
             Transcript,
+            FILE_MODEL,
         )
 
     elif suffix in VIDEOS:

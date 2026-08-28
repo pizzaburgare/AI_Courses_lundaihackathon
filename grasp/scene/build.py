@@ -12,13 +12,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from grasp.core import Script, ask_valid
+from grasp.core import LANGUAGE_RULE, Script, ask_valid
 from grasp.scene.source import check_scene
 
 HERE = Path(__file__).parent
-INSTRUCTIONS = "\n\n".join(
-    (HERE / name).read_text(encoding="utf-8") for name in ("api.md", "style.md")
-)
+PROMPT = "\n\n".join((HERE / name).read_text(encoding="utf-8") for name in ("api.md", "style.md"))
+INSTRUCTIONS = PROMPT + "\n\n" + LANGUAGE_RULE
 
 FAILURE_TAIL_CHARS = 6_000  # of a failure report, the end is the part that says why
 

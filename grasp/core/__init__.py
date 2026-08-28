@@ -7,6 +7,9 @@ adding, replacing or deleting a step touches one folder plus ``grasp/pipeline.py
 from grasp.core.config import (
     COURSES,
     DEFAULT_MODEL,
+    FILE_MODEL,
+    LANGUAGE,
+    LANGUAGE_RULE,
     MINUTES_PER_VIDEO,
     MODEL_ENV,
     ROOT,
@@ -39,6 +42,9 @@ from grasp.core.models import (
 __all__ = [
     "COURSES",
     "DEFAULT_MODEL",
+    "FILE_MODEL",
+    "LANGUAGE",
+    "LANGUAGE_RULE",
     "MINUTES_PER_VIDEO",
     "MODEL_ENV",
     "ROOT",

@@ -15,9 +15,17 @@ count is the running time, at :data:`grasp.core.WORDS_PER_MINUTE`.
 from math import ceil
 from pathlib import Path
 
-from grasp.core import MINUTES_PER_VIDEO, WORDS_PER_MINUTE, Script, Topic, ask_valid
+from grasp.core import (
+    LANGUAGE_RULE,
+    MINUTES_PER_VIDEO,
+    WORDS_PER_MINUTE,
+    Script,
+    Topic,
+    ask_valid,
+)
 
-INSTRUCTIONS = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
+PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
+INSTRUCTIONS = PROMPT + "\n" + LANGUAGE_RULE
 
 SOURCE_BUDGET_CHARS = 150_000  # total across all of a topic's sources
 MAX_BEAT_WORDS = 60  # a longer beat is a static screen with a voice over it

@@ -38,11 +38,15 @@ def ask(system: str, user: Content) -> str:
     return str(client.invoke(messages).content).strip()
 
 
-def ask_json[T: BaseModel](system: str, user: Content, schema: type[T]) -> T:
-    """One call, validated *schema* out. The only structured exchange format there is."""
+def ask_json[T: BaseModel](system: str, user: Content, schema: type[T], model: str = "") -> T:
+    """One call, validated *schema* out. The only structured exchange format there is.
+
+    *model* overrides the run's model for this one call. Ingest uses it to read a PDF
+    with a model that has eyes, whatever text model the rest of the run is on.
+    """
     messages: list[BaseMessage] = [SystemMessage(content=system), HumanMessage(content=user)]
     client = ChatOpenAI(
-        model=model_name(),
+        model=model or model_name(),
         api_key=SecretStr(os.getenv("OPENROUTER_API_KEY") or ""),
         base_url=OPENROUTER_URL,
     )
