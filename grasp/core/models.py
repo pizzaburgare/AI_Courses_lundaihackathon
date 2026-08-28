@@ -76,13 +76,6 @@ class Script(BaseModel):
         return sum(len(beat.narration.split()) for beat in self.beats)
 
 
-class Violation(BaseModel):
-    """One layout defect found at one ``self.play`` boundary."""
-
-    at: float = Field(description="Seconds into the video")
-    problem: str
-
-
 class Chapter(BaseModel):
     """One chapter marker, for YouTube timestamps."""
 
@@ -95,7 +88,6 @@ class Runtime(BaseModel):
 
     speech_seconds: float = 0.0
     chapters: list[Chapter] = Field(default_factory=list)
-    violations: list[Violation] = Field(default_factory=list)
 
 
 class Check(BaseModel):
@@ -106,14 +98,12 @@ class Check(BaseModel):
     speech_seconds: float = 0.0
     render_error: str = ""
     problems: list[str] = Field(default_factory=list)
-    violations: list[Violation] = Field(default_factory=list)
 
     def report(self) -> str:
         """The failure text handed back to the model on a retry."""
         lines = list(self.problems)
         if self.render_error:
             lines.insert(0, f"The render failed:\n{self.render_error}")
-        lines += [f"At {v.at:.1f}s: {v.problem}" for v in self.violations]
         return "\n".join(lines)
 
     def summary(self) -> str:
@@ -121,5 +111,5 @@ class Check(BaseModel):
         ratio = self.speech_seconds / self.video_seconds if self.video_seconds else 0.0
         return (
             f"{int(self.video_seconds) // 60}m{int(self.video_seconds) % 60:02d}s video, "
-            f"{ratio:.0%} narration, {len(self.violations)} layout violations"
+            f"{ratio:.0%} narration"
         )

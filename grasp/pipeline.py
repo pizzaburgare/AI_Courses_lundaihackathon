@@ -122,12 +122,16 @@ def run_topics(course: str) -> Path:
     return path
 
 
-def run_scripts(course: str, topic_id: str, *, force: bool = False) -> list[Path]:
+def run_scripts(course: str, topic_id: str, *, force: bool = False, upto: int = 0) -> list[Path]:
     """One topic -> one ``script.json`` per video. Returns their paths, in playing order.
 
     The parts are written one at a time, each with the earlier ones in front of it, which
     is what stops video 2 from re-teaching video 1. A part that already exists is loaded
     rather than rewritten - and still shown to the next part.
+
+    *upto* stops after that part, so asking for one video does not pay for the ones after
+    it. The parts before it are still written, because they are the context that keeps the
+    requested one from re-teaching them; ``upto=1`` therefore costs exactly one call.
     """
     root = course_dir(course)
     topic = find_topic(course, topic_id)
@@ -160,6 +164,8 @@ def run_scripts(course: str, topic_id: str, *, force: bool = False) -> list[Path
             )
         earlier.append(script)
         written.append(path)
+        if upto and part >= upto:
+            break
     return written
 
 
@@ -211,10 +217,11 @@ def run_topic(
     """Script -> scene -> render for every video of one topic.
 
     A step whose output file already exists is skipped, so re-running after a crash picks
-    up where it stopped. ``--force`` runs all of them anyway.
+    up where it stopped. ``--force`` runs all of them anyway. ``part`` narrows the run to
+    one video, and no step is run for any part after it.
     """
     started = time.time()
-    scripts = run_scripts(course, topic_id, force=force)
+    scripts = run_scripts(course, topic_id, force=force, upto=part)
     checks: list[Check] = []
 
     for path in scripts:
@@ -314,7 +321,7 @@ def status(course: str) -> list[tuple[str, ...]]:
         elif report.ok:
             verdict = "clean"
         else:
-            verdict = f"{len(report.violations) + len(report.problems)} flagged"
+            verdict = f"{len(report.problems)} flagged"
         rows.append((
             f"{topic_id}.{part}",
             title,

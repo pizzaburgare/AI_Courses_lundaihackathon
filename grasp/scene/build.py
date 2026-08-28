@@ -12,7 +12,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from grasp.core import LANGUAGE_RULE, Script, ask_valid
+from grasp.core import CODE_MODEL, LANGUAGE_RULE, Script, ask_valid
 from grasp.scene.source import check_scene
 
 HERE = Path(__file__).parent
@@ -76,5 +76,6 @@ def build_scene(script: Script, failure: str = "") -> str:
         "\n".join(lines),
         SceneSource,
         lambda answer: check_scene(answer.source, script),
+        model=CODE_MODEL,
     )
     return result.source.rstrip() + "\n"

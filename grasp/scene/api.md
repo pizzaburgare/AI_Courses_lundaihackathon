@@ -20,7 +20,7 @@ class Lesson(Scene):
         narrator = Narrator(self, Path(__file__).parent)
 
         narrator.new_section("Where the queue comes from")
-        title = Title("The M/M/c/K system")
+        title = Text("The M/M/c/K system", font_size=40).to_edge(UP)
         with narrator.say("When the buffer is full, arrivals are simply turned away."):
             self.play(Write(title))
 
@@ -29,7 +29,9 @@ class Lesson(Scene):
         narrator.finish()
 ```
 
-Requirements, all of them checked before the file is ever rendered:
+Requirements. Items 2, 3 and 4 are checked statically before the file is ever rendered,
+so breaking one costs you a rewrite immediately; the rest are not checked, and breaking
+one of those is a crash or a bad video:
 
 1. `from grasp.narration import Narrator` exactly as written. The package is installed.
    **No `sys.path` manipulation of any kind** - it is not needed and it is wrong.
@@ -45,6 +47,17 @@ Requirements, all of them checked before the file is ever rendered:
 6. Manim Community Edition 0.20 syntax only. `Create`, not `ShowCreation`;
    `Transform`/`ReplacementTransform`; `.animate`; `Text`, `MathTex`, `Tex`, `Title`.
    No ManimGL, no removed 0.x API, no third-party imports beyond `numpy as np`.
+7. **Every Manim point is three numbers**, even in 2D: `np.array([x, y, 0])`, never
+   `np.array([x, y])`. Adding a 2-element array to a point raises
+   `ValueError: operands could not be broadcast together with shapes (3,) (2,)` and the
+   render dies. Prefer the built-in direction constants - `LEFT`, `RIGHT`, `UP`, `DOWN`,
+   `ORIGIN`, and multiples like `LEFT * 3.5` - over writing coordinates by hand.
+8. `Tex`, `Title` and `MathTex` compile through LaTeX, so a bare `&`, `%`, `#`, `_`,
+   `$`, `~`, `^` or `\` in their text is a LaTeX error and the whole video fails to
+   render. **Use `Text` for every piece of prose** - titles, labels, captions, list
+   items - and keep `MathTex` for mathematics. When prose genuinely has to be `Tex`,
+   escape the character (`\&`, `\%`, `\#`). A script title containing `&` is the
+   common case: `Text("A & B")` renders, `Title("A & B")` does not.
 
 ## Narration
 
@@ -60,7 +73,8 @@ with narrator.say("The exact NARRATION text of this beat."):
   string literal. Do not paraphrase, shorten, re-punctuate, split, merge or reflow it.
   No f-strings, no implicit concatenation, no variables: the audio for the whole video is
   pre-synthesised by reading these literals out of the file, so anything else is silent.
-  A narration that wraps over several lines in the script is one string here.
+  A narration that wraps over several lines in the script is one string here, written on
+  one line of Python however long that line gets.
 - Every beat in the script gets exactly one `say()` block, and nothing is said that is
   not in the script. Both directions are checked before the file is rendered.
 - Put the animations for that beat **inside** the block. Leaving the block waits out any
@@ -75,10 +89,9 @@ with narrator.say("The exact NARRATION text of this beat."):
 `SECTION:` line, using that line's value as the name. Do not invent chapter boundaries
 anywhere else - the script decides them.
 
-## Layout - the render enforces this
+## Layout
 
-Every `self.play(...)` boundary is checked geometrically inside the render. A frame with
-text outside the frame or two overlapping text objects fails the video, so:
+Nothing checks this for you, and an unreadable frame is a wasted video, so it is on you:
 
 - Keep everything inside the visible frame: roughly x in [-7, 7], y in [-4, 4]. Anchor
   with `to_edge`, `to_corner`, `next_to`, `move_to` and `arrange`, not guessed

@@ -31,7 +31,9 @@ COLUMNS = (8, 40, 8, 7, 9)
 def parse(argv: list[str]) -> argparse.Namespace:
     """The whole command surface. Bad usage exits 2, courtesy of argparse."""
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--model", default="", help="model for this run; PDFs still use FILE_MODEL")
+    common.add_argument(
+        "--model", default="", help="model for this run; PDFs use FILE_MODEL, scenes CODE_MODEL"
+    )
 
     parser = argparse.ArgumentParser(prog="grasp", description="Course materials to videos.")
     subs = parser.add_subparsers(dest="command", required=True)

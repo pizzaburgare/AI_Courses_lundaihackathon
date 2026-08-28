@@ -5,6 +5,7 @@ adding, replacing or deleting a step touches one folder plus ``grasp/pipeline.py
 """
 
 from grasp.core.config import (
+    CODE_MODEL,
     COURSES,
     DEFAULT_MODEL,
     FILE_MODEL,
@@ -36,10 +37,10 @@ from grasp.core.models import (
     Topic,
     Topics,
     Transcript,
-    Violation,
 )
 
 __all__ = [
+    "CODE_MODEL",
     "COURSES",
     "DEFAULT_MODEL",
     "FILE_MODEL",
@@ -60,7 +61,6 @@ __all__ = [
     "Topic",
     "Topics",
     "Transcript",
-    "Violation",
     "ask",
     "ask_json",
     "ask_valid",

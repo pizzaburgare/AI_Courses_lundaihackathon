@@ -13,13 +13,12 @@ import hashlib
 import wave
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Self
+from typing import Self
 
 import numpy as np
 from manim import Scene, config
 
-from grasp.core import Chapter, Runtime, Violation, write_json
-from grasp.narration.layout import check_layout
+from grasp.core import Chapter, Runtime, write_json
 
 TIMELINE_TAIL_SECONDS = 1.0  # headroom at the end of the merged timeline
 
@@ -60,15 +59,6 @@ class Narrator:
         self.audio_dir = self.video_dir / "audio"
         self.clips: list[tuple[Path, float, float]] = []  # (wav, start, duration)
         self.chapters: list[Chapter] = []
-        self.violations: list[Violation] = []
-        self.play = scene.play
-        # the monkeypatch is the mechanism: every play boundary is a layout checkpoint
-        scene.play = self.checked_play  # type: ignore[method-assign]
-
-    def checked_play(self, *args: Any, **kwargs: Any) -> None:
-        """``scene.play``, plus the geometric check on the frame it leaves behind."""
-        self.play(*args, **kwargs)
-        self.violations.extend(check_layout(self.scene))
 
     def new_section(self, name: str) -> None:
         """Record a chapter marker at the current scene time, for YouTube timestamps."""
@@ -90,7 +80,6 @@ class Narrator:
             Runtime(
                 speech_seconds=sum(duration for _, _, duration in self.clips),
                 chapters=self.chapters,
-                violations=self.violations,
             ),
         )
         if not self.clips:

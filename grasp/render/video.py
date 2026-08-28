@@ -1,8 +1,8 @@
 """Step 5: ``scene.py`` -> ``lesson.mp4``, and the free checks on what came out.
 
 Synthesise the narration, render into the video's own media directory, then check the
-result. There is no vision review and no fix agent: Manim's exit code, the durations, and
-the geometry the scene reported in ``runtime.json`` are the whole check.
+result. There is no vision review and no fix agent: Manim's exit code and the durations
+it and ``runtime.json`` report are the whole check.
 
 One render, one :class:`Check`. Deciding whether to try again is
 :mod:`grasp.pipeline`'s job, not this module's.
@@ -111,9 +111,8 @@ def render_video(video: Path, quality: str = "l") -> Check:
         encoding="utf-8",
     )
     return Check(
-        ok=not problems and not runtime.violations,
+        ok=not problems,
         video_seconds=seconds,
         speech_seconds=runtime.speech_seconds,
         problems=problems,
-        violations=runtime.violations,
     )

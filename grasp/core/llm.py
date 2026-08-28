@@ -62,17 +62,21 @@ def ask_valid[T: BaseModel](
     schema: type[T],
     check: Callable[[T], list[str]],
     attempts: int = 3,
+    model: str = "",
 ) -> T:
     """Ask for *schema* until *check* finds nothing to complain about.
 
     *check* returns a list of complaints, empty when the answer is acceptable. Each
     rejected answer is followed by a call that quotes the complaints, so a reply that is
     merely 200 words too long costs one more call instead of failing a whole course run.
+
+    *model* overrides the run's model for every attempt, the way it does in
+    :func:`ask_json`. The scene step uses it to write Python with a code model.
     """
     problems: list[str] = []
     complaint = ""
     for _ in range(attempts):
-        result = ask_json(system, user + complaint, schema)
+        result = ask_json(system, user + complaint, schema, model)
         problems = check(result)
         if not problems:
             return result
