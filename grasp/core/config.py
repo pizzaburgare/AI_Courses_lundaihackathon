@@ -14,7 +14,7 @@ FILE_MODEL = "google/gemini-3.1-flash-lite"
 
 # Writing the Manim scene is a coding task, not a teaching one: it is judged by whether
 # the file runs. That one step gets a model chosen for code, whatever the run's model is.
-CODE_MODEL = "moonshotai/kimi-k3"
+CODE_MODEL = "moonshotai/kimi-k2.7-code"
 
 MINUTES_PER_VIDEO = 8  # a topic longer than this is split into parts
 WORDS_PER_MINUTE = 150  # spoken narration, used to size a script

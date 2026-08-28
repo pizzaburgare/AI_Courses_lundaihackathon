@@ -46,7 +46,11 @@ one of those is a crash or a bad video:
    directory, on its own.
 6. Manim Community Edition 0.20 syntax only. `Create`, not `ShowCreation`;
    `Transform`/`ReplacementTransform`; `.animate`; `Text`, `MathTex`, `Tex`, `Title`.
-   No ManimGL, no removed 0.x API, no third-party imports beyond `numpy as np`.
+   No ManimGL and no removed 0.x API. **The standard library is fully available** -
+   import `math`, `random`, `itertools`, `fractions` and the like freely. `numpy as np`
+   is the only third-party import allowed beyond manim itself. Note that `np.math` was
+   removed in NumPy 2 and raises `AttributeError`: use `math.factorial`, `math.exp`,
+   `math.comb` and friends from the standard library instead.
 7. **Every Manim point is three numbers**, even in 2D: `np.array([x, y, 0])`, never
    `np.array([x, y])`. Adding a 2-element array to a point raises
    `ValueError: operands could not be broadcast together with shapes (3,) (2,)` and the
