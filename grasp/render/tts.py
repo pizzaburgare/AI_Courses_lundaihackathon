@@ -22,7 +22,7 @@ QWEN_LANGUAGE = "English"
 QWEN_SPEAKER = "Ryan"
 QWEN_REF_AUDIO = ROOT / "grasp" / "render" / "clone.wav"
 
-BATCH_SIZE = 8
+BATCH_SIZE = 4  # peak memory is per batch, and 8 reserves ~11 GB of a 16 GB Mac
 MAX_SECONDS_PER_WORD = 1.0
 MIN_CLIP_SECONDS = 3.0  # floor, so a one-word clip is not rejected for being 1.2s
 TIMEOUT_SECONDS_PER_CLIP = 300
@@ -71,7 +71,28 @@ def synthesize(texts: list[str], audio_dir: Path) -> list[Path]:
                 handle.writeframes(
                     (np.clip(audio, -1.0, 1.0) * INT16_MAX).astype(np.int16).tobytes()
                 )
+        release_cache()
     return paths
+
+
+def release_cache() -> None:
+    """Hand the allocator's cached blocks back to the driver, between batches.
+
+    Torch keeps every block it has ever allocated in a pool of its own, so the reservation
+    climbs with each batch even though the live tensors do not: on a 16 GB Mac, 10.9 GB
+    after one batch of eight and 14.4 GB after two, against 4.2 GB actually in use. The
+    machine then swaps until the disk fills. Giving the blocks back costs one re-request at
+    the start of the next batch.
+
+    Called after a batch is written rather than inside :func:`generate`, because the
+    tensors are still alive until that function returns.
+    """
+    import torch
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    elif torch.backends.mps.is_available():
+        torch.mps.empty_cache()
 
 
 @cache
