@@ -50,11 +50,12 @@ Chapter markers become YouTube timestamps, so use them for high-level chapters
 
 Leave `topic_id`, `part` and `parts` blank; they are filled in for you.
 
-## Length - this is enforced
+## Length
 
-The word count you are given is the running time, at about 150 spoken words a minute. A
-script outside the stated band is rejected and re-asked, so count as you go. At 25-45
-words a beat that works out at roughly 20-40 beats for an eight-minute video.
+The word count you are given is the running time, at about 150 spoken words a minute.
+Nothing counts it for you, so count as you go. A script well short of it is a video that
+ends before the concept has landed; one well over it is a viewer who leaves halfway. At
+25-45 words a beat that works out at roughly 20-40 beats for an eight-minute video.
 
 ## How to sequence the beats
 

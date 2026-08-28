@@ -21,8 +21,6 @@ from grasp.script.sources import neighbour_block, source_block
 PROMPT = (Path(__file__).parent / "outline.md").read_text(encoding="utf-8")
 INSTRUCTIONS = PROMPT + "\n" + LANGUAGE_RULE
 
-MIN_COVERS, MAX_COVERS = 3, 12
-
 
 def plan_parts(
     topic: Topic, sources: dict[str, str], max_parts: int, neighbours: list[Topic]
@@ -65,11 +63,6 @@ def plan_parts(
             label = f"part {part.part}"
             if not part.title.strip():
                 problems.append(f"{label} has no title")
-            if not MIN_COVERS <= len(part.covers) <= MAX_COVERS:
-                problems.append(
-                    f"{label} covers {len(part.covers)} points; the range is "
-                    f"{MIN_COVERS}-{MAX_COVERS}. Merge a thin part into its neighbour."
-                )
             for point in part.covers:
                 key = " ".join(point.lower().split())
                 if key in seen:

@@ -8,8 +8,10 @@ The brief is what keeps a series honest. Part *n* is told the points assigned to
 the points assigned to every other part, so it can neither re-teach part 1 nor quietly
 drop material because it ran out of things to say.
 
-Data in, data out. This is also the only place video length is controlled - the word count
-is the running time, at :data:`grasp.core.WORDS_PER_MINUTE`.
+Data in, data out. This is also the only place video length is decided: the word count in
+the brief is the running time, at :data:`grasp.core.WORDS_PER_MINUTE`. It is asked for, not
+enforced - what a beat is worth in words is an editorial judgement, and those belong in
+``prompt.md`` where they can be argued with, not in a rejection the model cannot answer.
 """
 
 from math import ceil
@@ -28,11 +30,6 @@ from grasp.script.sources import neighbour_block, source_block
 
 PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
 INSTRUCTIONS = PROMPT + "\n" + LANGUAGE_RULE
-
-MAX_BEAT_WORDS = 60  # a longer beat is a static screen with a voice over it
-MIN_BEAT_WORDS = 12  # a shorter one is a caption, and breaks the rhythm
-MIN_BEATS = 4
-WORD_TOLERANCE = 0.30  # how far off the target word count a script may land
 
 
 def part_count(minutes: int) -> int:
@@ -77,7 +74,6 @@ def write_script(
     parts = len(outline.parts)
     mine = briefs[part]
     target = target_words(topic.minutes, parts)
-    low, high = round(target * (1 - WORD_TOLERANCE)), round(target * (1 + WORD_TOLERANCE))
 
     lines = [
         f"# Topic {topic.id} - {topic.title}",
@@ -85,7 +81,7 @@ def write_script(
         topic.summary.strip(),
         "",
         f"This is video {part} of {parts} for this topic, titled {mine.title!r}.",
-        f"Aim for about {target} narration words, and stay between {low} and {high}.",
+        f"Aim for about {target} narration words; that is what sets the running time.",
     ]
 
     if mine.covers:
@@ -112,38 +108,13 @@ def write_script(
     lines += source_block(topic.sources, sources)
 
     def check(result: Script) -> list[str]:
+        """The two ways a beat is unusable to the next step. Length is the prompt's job."""
         problems: list[str] = []
-        if len(result.beats) < MIN_BEATS:
-            problems.append(f"only {len(result.beats)} beats; a video needs at least {MIN_BEATS}")
         for number, beat in enumerate(result.beats, start=1):
+            if not beat.narration.strip():
+                problems.append(f"beat {number} ({beat.title!r}) narrates nothing")
             if not beat.on_screen.strip():
                 problems.append(f"beat {number} ({beat.title!r}) says nothing about the screen")
-            words = len(beat.narration.split())
-            if not words:
-                problems.append(f"beat {number} ({beat.title!r}) narrates nothing")
-            elif words > MAX_BEAT_WORDS:
-                problems.append(
-                    f"beat {number} ({beat.title!r}) narrates {words} words, over the "
-                    f"{MAX_BEAT_WORDS}-word ceiling. Split it into two beats."
-                )
-            elif words < MIN_BEAT_WORDS:
-                problems.append(
-                    f"beat {number} ({beat.title!r}) narrates only {words} words. Say "
-                    f"something worth a beat, or fold it into its neighbour."
-                )
-        total = result.words()
-        if total > high:
-            problems.append(
-                f"the narration is {total} words across {len(result.beats)} beats, "
-                f"{total - high} words over the {high}-word maximum. Cut about "
-                f"{total - high} words: tighten the wordiest beats, or drop one."
-            )
-        elif total < low:
-            problems.append(
-                f"the narration is {total} words across {len(result.beats)} beats, "
-                f"{low - total} words under the {low}-word minimum. Add about "
-                f"{low - total} words: go deeper on a point you asserted, or add a beat."
-            )
         return problems
 
     result = ask_valid(INSTRUCTIONS, "\n".join(lines), Script, check)
