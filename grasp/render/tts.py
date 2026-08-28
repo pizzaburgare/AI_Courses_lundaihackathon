@@ -6,9 +6,8 @@ one clip and nothing else.
 """
 
 import hashlib
+import threading
 import wave
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FuturesTimeoutError
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -36,24 +35,50 @@ def clip_path(audio_dir: Path, text: str) -> Path:
     return audio_dir / f"{hashlib.sha256(text.encode()).hexdigest()[:16]}.wav"
 
 
-def synthesize(texts: list[str], audio_dir: Path) -> list[Path]:
-    """Synthesise each of *texts* into *audio_dir*, keeping any WAV that already exists.
+def generate_within(texts: list[str], seconds: float) -> list[tuple[np.ndarray, int]]:
+    """:func:`generate` on a daemon thread, abandoned if it takes longer than *seconds*.
 
-    Batches go through a one-worker pool purely for the timeout: a runaway generation
-    otherwise hangs a whole course run with no way to interrupt it.
+    A daemon thread, not a ``ThreadPoolExecutor``: the executor joins its workers both in
+    ``shutdown`` and in the ``atexit`` handler, so a generation that never returns holds
+    the timeout inside the ``with`` block and then holds interpreter exit. That is how a
+    stalled batch turned into a silent hour rather than a failure after twenty minutes.
+    A daemon thread is abandoned instead, and dies with the process.
     """
+    done = threading.Event()
+    out: list[tuple[np.ndarray, int]] = []
+    failure: list[Exception] = []
+
+    def work() -> None:
+        # pylint: disable=broad-exception-caught
+        try:
+            out.extend(generate(texts))
+        except Exception as err:  # noqa: BLE001 - re-raised on the calling thread
+            failure.append(err)
+        finally:
+            done.set()
+
+    threading.Thread(target=work, daemon=True).start()
+    if not done.wait(seconds):
+        raise RuntimeError(
+            f"TTS synthesis stalled on {len(texts)} clips: no result in {seconds:.0f}s. "
+            f"On a Mac this is usually memory - check swap before retrying."
+        )
+    if failure:
+        raise failure[0]
+    return out
+
+
+def synthesize(texts: list[str], audio_dir: Path) -> list[Path]:
+    """Synthesise each of *texts* into *audio_dir*, keeping any WAV that already exists."""
     audio_dir.mkdir(parents=True, exist_ok=True)
     paths = [clip_path(audio_dir, text) for text in texts]
     missing = [(t, p) for t, p in zip(texts, paths, strict=True) if not p.exists()]
 
     for start in range(0, len(missing), BATCH_SIZE):
         batch = missing[start : start + BATCH_SIZE]
-        with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(generate, [text for text, _ in batch])
-            try:
-                results = future.result(timeout=TIMEOUT_SECONDS_PER_CLIP * len(batch))
-            except FuturesTimeoutError as err:
-                raise RuntimeError(f"TTS synthesis timed out on {len(batch)} clips") from err
+        results = generate_within(
+            [text for text, _ in batch], TIMEOUT_SECONDS_PER_CLIP * len(batch)
+        )
 
         for (text, path), (audio, rate) in zip(batch, results, strict=True):
             words = max(len(text.split()), 1)
