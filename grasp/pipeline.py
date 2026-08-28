@@ -21,10 +21,13 @@ from grasp.core import (
     Check,
     Corpus,
     Document,
+    Outline,
+    Part,
     Script,
     Topic,
     Topics,
     course_dir,
+    outline_path,
     read_json,
     topic_order,
     video_dir,
@@ -34,7 +37,7 @@ from grasp.core import (
 from grasp.ingest import MIN_CHARS, SUPPORTED, summarise, transcribe
 from grasp.render import render_video
 from grasp.scene import build_scene
-from grasp.script import part_count, write_script
+from grasp.script import part_count, plan_parts, write_script
 from grasp.topics import plan_topics
 
 MAX_RENDER_ATTEMPTS = 3
@@ -118,43 +121,87 @@ def run_topics(course: str) -> Path:
     path = write_json(root / "topics.json", topics)
     minutes = sum(topic.minutes for topic in topics.topics)
     videos = sum(part_count(topic.minutes) for topic in topics.topics)
-    log("topics", "ok", f"{len(topics.topics)} topics, {videos} videos, {minutes} minutes")
+    log(
+        "topics",
+        "ok",
+        f"{len(topics.topics)} topics, up to {videos} videos, {minutes} minutes",
+    )
     return path
 
 
-def run_scripts(course: str, topic_id: str, *, force: bool = False, upto: int = 0) -> list[Path]:
-    """One topic -> one ``script.json`` per video. Returns their paths, in playing order.
-
-    The parts are written one at a time, each with the earlier ones in front of it, which
-    is what stops video 2 from re-teaching video 1. A part that already exists is loaded
-    rather than rewritten - and still shown to the next part.
-
-    *upto* stops after that part, so asking for one video does not pay for the ones after
-    it. The parts before it are still written, because they are the context that keeps the
-    requested one from re-teaching them; ``upto=1`` therefore costs exactly one call.
-    """
-    root = course_dir(course)
-    topic = find_topic(course, topic_id)
+def load_sources(course: str, topic: Topic) -> dict[str, str]:
+    """Every document *topic* names, read off disk. Raises if the corpus lacks one."""
+    corpus = course_dir(course) / "corpus"
     sources: dict[str, str] = {}
     for relative in topic.sources:
-        path = root / "corpus" / relative
+        path = corpus / relative
         if not path.is_file():
             raise FileNotFoundError(
                 f"topic {topic.id} names a source that is not in the corpus: {path}"
             )
         sources[relative] = path.read_text(encoding="utf-8", errors="replace")
+    return sources
 
-    parts = part_count(topic.minutes)
+
+def run_outline(
+    course: str, topic: Topic, sources: dict[str, str], *, force: bool = False
+) -> Outline:
+    """``topics.json`` + the sources -> ``outlines/<topic_id>.json``. One call, or none.
+
+    A topic short enough to be one video needs no division, and gets a single empty brief
+    without asking a model. Otherwise the outline is written once and reused, so rendering
+    part 2 later does not re-plan the topic - and never has to write part 1 to get there.
+    """
+    most = part_count(topic.minutes)
+    if most == 1:
+        return Outline(topic_id=topic.id, parts=[Part(part=1, title=topic.title, covers=[])])
+
+    path = outline_path(course, topic.id)
+    if path.is_file() and not force:
+        outline = read_json(path, Outline)
+        log("outline", "skip", f"{path} exists, {len(outline.parts)} parts")
+        return outline
+
+    outline = plan_parts(topic, sources, most)
+    write_json(path, outline)
+    shape = ", ".join(f"{p.part}:{len(p.covers)} points" for p in outline.parts)
+    log("outline", "ok", f"{topic.id} -> {len(outline.parts)} of at most {most} videos ({shape})")
+    return outline
+
+
+def run_scripts(course: str, topic_id: str, *, force: bool = False, only: int = 0) -> list[Path]:
+    """One topic -> one ``script.json`` per video. Returns their paths, in playing order.
+
+    The outline is planned first, and it - not the minute estimate - decides how many
+    videos there are. Each part is then written against its own brief, so the parts are
+    independent: asking for part 2 alone costs the outline plus one script, and never
+    re-teaches part 1 because part 1's points were assigned away from it.
+
+    *only* narrows the run to that one part.
+    """
+    topic = find_topic(course, topic_id)
+    sources = load_sources(course, topic)
+    outline = run_outline(course, topic, sources, force=force)
+
+    wanted = [entry.part for entry in outline.parts]
+    if only:
+        if only not in wanted:
+            raise ValueError(
+                f"topic {topic_id} has {len(wanted)} video(s) in its outline, so there is "
+                f"no part {only}. Its parts are: {', '.join(str(n) for n in wanted)}."
+            )
+        wanted = [only]
+
     written: list[Path] = []
-    earlier: list[Script] = []
-    for part in range(1, parts + 1):
+    for part in wanted:
+        # the topic's title, not the outline's: a directory is the progress record, and
+        # re-planning a topic must not orphan the videos already rendered under it.
         video = video_dir(course, topic.id, part, topic.title)
         path = video / "script.json"
         if path.is_file() and not force:
-            script = read_json(path, Script)
             log("script", "skip", f"{path} exists", into=video / "run.log")
         else:
-            script = write_script(topic, sources, part, parts, earlier)
+            script = write_script(topic, sources, outline, part)
             write_json(path, script)
             log(
                 "script",
@@ -162,10 +209,7 @@ def run_scripts(course: str, topic_id: str, *, force: bool = False, upto: int = 
                 f"{path}, {len(script.beats)} beats, {script.words()} words",
                 into=video / "run.log",
             )
-        earlier.append(script)
         written.append(path)
-        if upto and part >= upto:
-            break
     return written
 
 
@@ -221,7 +265,7 @@ def run_topic(
     one video, and no step is run for any part after it.
     """
     started = time.time()
-    scripts = run_scripts(course, topic_id, force=force, upto=part)
+    scripts = run_scripts(course, topic_id, force=force, only=part)
     checks: list[Check] = []
 
     for path in scripts:
@@ -272,7 +316,7 @@ def run_course(
     topics = sorted(topics, key=lambda t: topic_order(t.id))
 
     planned = sum(part_count(topic.minutes) for topic in topics)
-    log("course", "ok", f"{len(topics)} topics, {planned} videos")
+    log("course", "ok", f"{len(topics)} topics, up to {planned} videos")
     started = time.time()
     failed: list[str] = []
 

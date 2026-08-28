@@ -6,6 +6,7 @@ The only module that knows the layout of a course directory::
         raw/**                        what a human dropped in
         corpus/**.md, corpus/index.json   step 1
         topics.json                       step 2
+        outlines/<topic_id>.json          step 3, for a topic of several videos
         videos/<topic_id>-<part>-<slug>/  steps 3-5
 
 There is no state file. The tree is the progress record, so ``grasp status`` reads it and
@@ -37,6 +38,11 @@ def course_dir(course: str) -> Path:
     if path.is_dir() or path.is_absolute() or len(path.parts) > 1:
         return path
     return COURSES / course
+
+
+def outline_path(course: str, topic_id: str) -> Path:
+    """``<course>/outlines/<topic_id>.json``. One file per topic, whatever its part count."""
+    return course_dir(course) / "outlines" / f"{topic_id}.json"
 
 
 def video_dir(course: str, topic_id: str, part: int, title: str) -> Path:

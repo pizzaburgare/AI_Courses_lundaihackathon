@@ -18,6 +18,7 @@ from grasp.core.config import (
 )
 from grasp.core.files import (
     course_dir,
+    outline_path,
     read_json,
     slug,
     topic_order,
@@ -32,6 +33,8 @@ from grasp.core.models import (
     Check,
     Corpus,
     Document,
+    Outline,
+    Part,
     Runtime,
     Script,
     Topic,
@@ -56,6 +59,8 @@ __all__ = [
     "Content",
     "Corpus",
     "Document",
+    "Outline",
+    "Part",
     "Runtime",
     "Script",
     "Topic",
@@ -66,6 +71,7 @@ __all__ = [
     "ask_valid",
     "course_dir",
     "model_name",
+    "outline_path",
     "read_json",
     "slug",
     "topic_order",

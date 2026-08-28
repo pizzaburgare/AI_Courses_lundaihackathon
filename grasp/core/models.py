@@ -47,6 +47,31 @@ class Topics(BaseModel):
     topics: list[Topic] = Field(default_factory=list)
 
 
+class Part(BaseModel):
+    """One video's brief inside a topic's outline."""
+
+    part: int = Field(description="Which video of the topic this is, counting from 1")
+    title: str = Field(description="Title of this video; not a repeat of the concept name")
+    covers: list[str] = Field(
+        default_factory=list,
+        description=(
+            "The points this video teaches, in teaching order, one short sentence each. "
+            "No point may appear in more than one video of the topic."
+        ),
+    )
+
+
+class Outline(BaseModel):
+    """``outlines/<topic_id>.json`` - which of a topic's videos teaches what.
+
+    Written once, before any beats. A later part is handed the material genuinely left
+    for it, instead of discovering there is none and re-teaching the first.
+    """
+
+    topic_id: str = Field(default="", description="Leave blank, it is filled in")
+    parts: list[Part] = Field(default_factory=list)
+
+
 class Beat(BaseModel):
     """One stretch of a video: what is said, and what is on screen while it is said."""
 

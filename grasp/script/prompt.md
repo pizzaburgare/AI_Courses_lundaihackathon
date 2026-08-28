@@ -58,7 +58,8 @@ words a beat that works out at roughly 20-40 beats for an eight-minute video.
 
 ## How to sequence the beats
 
-Not a five-part essay - a running order. The spine that makes these videos work:
+Not a five-part essay - a running order. The spine that makes these videos work, of which
+one video of a series uses whichever movements its brief covers:
 
 1. **Intuition before formalism.** Open with the problem the concept exists to solve, in
    plain language, with a concrete image. The viewer should want the machinery before
@@ -77,15 +78,23 @@ Not a five-part essay - a running order. The spine that makes these videos work:
 
 ## When this is one video of several
 
-A long concept is split across several videos and you are told which one you are writing.
+A long concept is split across several videos, and the division has already been made for
+you. You are given the points assigned to your video, and the points assigned to each of
+the others.
 
-- Videos after the first are shown everything the earlier ones already narrated. Continue
-  from there. Do not re-teach it: a one-sentence callback is welcome, a recap section is
-  not.
+- **Your brief is the boundary.** Teach every point assigned to you, and no material
+  outside them. The points listed under the other videos belong to those videos: do not
+  teach them, do not re-derive them, and do not recap them. A one-sentence callback to an
+  earlier video is welcome, a recap section is not.
+- **If your brief looks thin for the word count, go deeper, not wider.** Another example,
+  the intuition under a step you were going to assert, a harder case, a limit worth
+  poking. Reaching into another video's material to fill the time makes the series repeat
+  itself, which is worse than a short video.
 - Each video still needs its own opening that says what it is about, and its own close.
   Only the last one gets the full synthesis; earlier ones end by naming what comes next.
-- The worked example and the misconceptions belong in the video whose material they
-  actually test, not automatically in the last one.
+- The spine above describes the concept as a whole. Use the parts of it your brief calls
+  for: a video briefed only on theory does not need a misconceptions section, and the
+  worked example belongs to the video whose points it actually tests.
 
 Use the source material for the facts, the notation and the worked example - match the
 course's conventions and symbols. Do not invent results the material does not support,
