@@ -24,7 +24,7 @@ from grasp.core import (
     Topic,
     ask_valid,
 )
-from grasp.script.sources import source_block
+from grasp.script.sources import neighbour_block, source_block
 
 PROMPT = (Path(__file__).parent / "prompt.md").read_text(encoding="utf-8")
 INSTRUCTIONS = PROMPT + "\n" + LANGUAGE_RULE
@@ -49,13 +49,21 @@ def target_words(minutes: int, parts: int) -> int:
     return round(min(minutes / parts, MINUTES_PER_VIDEO) * WORDS_PER_MINUTE)
 
 
-def write_script(topic: Topic, sources: dict[str, str], outline: Outline, part: int) -> Script:
+def write_script(
+    topic: Topic,
+    sources: dict[str, str],
+    outline: Outline,
+    part: int,
+    neighbours: list[Topic] | None = None,
+) -> Script:
     """The beat list for video *part* of *topic*, against its brief in *outline*.
 
     *sources* maps each corpus-relative path in ``topic.sources`` to that document's
     markdown. *outline* holds one brief per video of this topic; a topic that is one video
     may pass an outline whose single part lists no points, and this video then covers the
-    whole concept.
+    whole concept. *neighbours* is every other topic of the course - a one-video topic never
+    goes through the outline stage, so this is the only thing telling it that the topic
+    before it exists.
     """
     missing = [path for path in topic.sources if path not in sources]
     if missing:
@@ -100,6 +108,7 @@ def write_script(topic: Topic, sources: dict[str, str], outline: Outline, part: 
             "section is not. Trust that the other videos do their own job.",
         ]
 
+    lines += neighbour_block(topic, neighbours or [])
     lines += source_block(topic.sources, sources)
 
     def check(result: Script) -> list[str]:

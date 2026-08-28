@@ -18,6 +18,14 @@ genuinely distinct: two separate derivations, two families of worked example, a 
 half and an application half. If you cannot name what the second video teaches without
 reaching into the first, there is one video here.
 
+## The rest of the course exists
+
+You are shown the other topics of the course, in order. The viewer reaches this one having
+watched the ones before it, so a point that merely restates an earlier topic is a point
+this topic should not spend a beat on. Lean on those results and name them in passing;
+never budget a video for re-deriving them. Likewise, do not reach forward: material a
+later topic owns is not available to pad a thin part with.
+
 ## The division
 
 - **Disjoint.** Every point belongs to exactly one video. Writing the same point into two

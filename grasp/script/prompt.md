@@ -96,6 +96,14 @@ the others.
   for: a video briefed only on theory does not need a misconceptions section, and the
   worked example belongs to the video whose points it actually tests.
 
+## The rest of the course exists
+
+You are shown the other topics of the course, in order. The viewer arrives here having
+watched the earlier ones, so their results are yours to use, in one clause, by name - and
+never to define, derive or re-teach. Opening on a prerequisite the course already covered
+is the most common way one of these videos wastes a minute. Topics listed as coming later
+are not yours to teach at all.
+
 Use the source material for the facts, the notation and the worked example - match the
 course's conventions and symbols. Do not invent results the material does not support,
 and do not cover material outside this concept.

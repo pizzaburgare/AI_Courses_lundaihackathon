@@ -16,7 +16,7 @@ Data in, data out. :mod:`grasp.pipeline` writes the answer.
 from pathlib import Path
 
 from grasp.core import LANGUAGE_RULE, Outline, Topic, ask_valid
-from grasp.script.sources import source_block
+from grasp.script.sources import neighbour_block, source_block
 
 PROMPT = (Path(__file__).parent / "outline.md").read_text(encoding="utf-8")
 INSTRUCTIONS = PROMPT + "\n" + LANGUAGE_RULE
@@ -24,11 +24,15 @@ INSTRUCTIONS = PROMPT + "\n" + LANGUAGE_RULE
 MIN_COVERS, MAX_COVERS = 3, 12
 
 
-def plan_parts(topic: Topic, sources: dict[str, str], max_parts: int) -> Outline:
+def plan_parts(
+    topic: Topic, sources: dict[str, str], max_parts: int, neighbours: list[Topic]
+) -> Outline:
     """How *topic* divides into videos: between one part and *max_parts* of them.
 
     *sources* maps each corpus-relative path in ``topic.sources`` to that document's
-    markdown, exactly as :func:`grasp.script.write_script` takes it.
+    markdown, exactly as :func:`grasp.script.write_script` takes it. *neighbours* is every
+    other topic of the course, so the division can lean on what came before instead of
+    re-deriving it, and can leave what comes later alone.
     """
     missing = [path for path in topic.sources if path not in sources]
     if missing:
@@ -43,6 +47,7 @@ def plan_parts(topic: Topic, sources: dict[str, str], max_parts: int) -> Outline
             f"This concept may become at most {max_parts} videos. Use fewer if the "
             f"material does not honestly fill {max_parts}."
         ),
+        *neighbour_block(topic, neighbours),
         *source_block(topic.sources, sources),
     ]
 

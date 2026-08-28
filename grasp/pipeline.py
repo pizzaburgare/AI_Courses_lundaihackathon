@@ -59,13 +59,17 @@ def clock(seconds: float) -> str:
     return f"{int(seconds) // 60}m{int(seconds) % 60:02d}s"
 
 
-def find_topic(course: str, topic_id: str) -> Topic:
-    """The one topic in ``topics.json`` with this id."""
-    topics = read_json(course_dir(course) / "topics.json", Topics)
-    for topic in topics.topics:
+def find_topic(course: str, topic_id: str) -> tuple[Topic, list[Topic]]:
+    """The topic with this id, and every other topic of the course.
+
+    Step 3 needs both: a topic planned in isolation opens by re-deriving whatever the
+    topic before it already taught.
+    """
+    topics = read_json(course_dir(course) / "topics.json", Topics).topics
+    for topic in topics:
         if topic.id == topic_id:
-            return topic
-    known = ", ".join(t.id for t in topics.topics) or "none"
+            return topic, [other for other in topics if other.id != topic_id]
+    known = ", ".join(t.id for t in topics) or "none"
     raise ValueError(f"no topic {topic_id!r} in {course}'s topics.json (have: {known})")
 
 
@@ -144,7 +148,12 @@ def load_sources(course: str, topic: Topic) -> dict[str, str]:
 
 
 def run_outline(
-    course: str, topic: Topic, sources: dict[str, str], *, force: bool = False
+    course: str,
+    topic: Topic,
+    sources: dict[str, str],
+    neighbours: list[Topic],
+    *,
+    force: bool = False,
 ) -> Outline:
     """``topics.json`` + the sources -> ``outlines/<topic_id>.json``. One call, or none.
 
@@ -162,7 +171,7 @@ def run_outline(
         log("outline", "skip", f"{path} exists, {len(outline.parts)} parts")
         return outline
 
-    outline = plan_parts(topic, sources, most)
+    outline = plan_parts(topic, sources, most, neighbours)
     write_json(path, outline)
     shape = ", ".join(f"{p.part}:{len(p.covers)} points" for p in outline.parts)
     log("outline", "ok", f"{topic.id} -> {len(outline.parts)} of at most {most} videos ({shape})")
@@ -179,9 +188,9 @@ def run_scripts(course: str, topic_id: str, *, force: bool = False, only: int = 
 
     *only* narrows the run to that one part.
     """
-    topic = find_topic(course, topic_id)
+    topic, neighbours = find_topic(course, topic_id)
     sources = load_sources(course, topic)
-    outline = run_outline(course, topic, sources, force=force)
+    outline = run_outline(course, topic, sources, neighbours, force=force)
 
     wanted = [entry.part for entry in outline.parts]
     if only:
@@ -201,7 +210,7 @@ def run_scripts(course: str, topic_id: str, *, force: bool = False, only: int = 
         if path.is_file() and not force:
             log("script", "skip", f"{path} exists", into=video / "run.log")
         else:
-            script = write_script(topic, sources, outline, part)
+            script = write_script(topic, sources, outline, part, neighbours)
             write_json(path, script)
             log(
                 "script",
