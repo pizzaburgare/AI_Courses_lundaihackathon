@@ -22,6 +22,7 @@ dependencies = [
     "torch>=2.3.0",
     "python-dotenv>=1.2.2",
     "openai-whisper>=20250625",
+    "pydantic-ai-slim[openai]>=2.35.3",
 ]
 
 [project.scripts]
